@@ -1,0 +1,377 @@
+<?php
+
+/**
+ * Implements hook_menu()
+ */
+function commerce_admin_order_menu() {
+  $items['admin/commerce/commerce_admin_order'] = array(
+    'title' => t('Commerce Admin orders'),
+    'page callback' => 'commerce_admin_non_admin_orders_page',
+    'page arguments' => array(''),
+    'description' => t('Manage admin orders'),
+    'access arguments' => array('administer commerce_order entities'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/commerce/commerce_admin_order/non_admin_orders'] = array(
+    'title' => t('Non-admin orders'),
+    'access arguments' => array('administer commerce_order entities'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/commerce/commerce_admin_order/admin_orders'] = array(
+    'title' => t('Admin orders'),
+    'page callback' => 'commerce_admin_admin_orders_page',
+    'access arguments' => array('administer commerce_order entities'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+/**
+ * Admin page listing orders, which are not recorded as admin orders
+ */
+function commerce_admin_non_admin_orders_page() {
+  $module_enabled_date = variable_get('commerce_admin_order_first_enabled', 0);
+
+  $page = array();
+
+  $page['summary'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Orders created before the Commerce Admin order module was 
+      enabled (@module_enabled) that are not considered to have been created 
+      via the Commerce back office system', 
+      array('@module_enabled' => date('Y-m-d H:i:sO', $module_enabled_date))),
+    '#prefix' => '<p>',
+    '#suffix' => '</p>',
+  );
+
+  $page['form'] = drupal_get_form('commerce_admin_order_order_list_form', 
+    array('are_admin_orders' => FALSE));
+
+  return $page;
+}
+
+/**
+ * Admin page listing orders, which are recorded as admin orders
+ */
+function commerce_admin_admin_orders_page() {
+  $module_enabled_date = variable_get('commerce_admin_order_first_enabled', 0);
+
+  $page = array();
+
+  $page['summary'] = array(
+    'paragraph_1' => array(
+      '#type' => 'markup',
+      '#markup' => t('Orders that are known to have been created via the Commerce 
+        back office system. Orders since the Commerce Admin order module was 
+        enabled on @module_enabled_date are automatically added to this list.', 
+        array('@module_enabled_date' => date('Y-m-d H:i:sO', $module_enabled_date))),
+      '#prefix' => '<p>',
+      '#suffix' => '</p>',
+    ),
+    'paragraph_2' => array(
+      '#type' => 'markup',
+      '#markup' => t('Orders created before that date need to be manually marked
+        as created by the back office system by using the form on the ' 
+        . l('non-admin orders page', 'admin/commerce/commerce_admin_order/non_admin_orders') . '.'),
+      '#prefix' => '<p>',
+      '#suffix' => '</p>',
+    ),
+  );
+
+  $page['form'] = drupal_get_form('commerce_admin_order_order_list_form', 
+    array('are_admin_orders' => TRUE));
+
+  return $page;
+}
+
+/**
+ * Pager form that lists either orders created before the module was enabled 
+ * that are not known to have been created in via the Commerce back office 
+ * system, or a list or orders that are known to be created via the back office
+ * system
+ */
+function commerce_admin_order_order_list_form($form, &$form_state, $params) {
+  $module_enabled_date = variable_get('commerce_admin_order_first_enabled', 0);
+
+  $header = array(
+    array(
+      'data' => t('Order id'),
+      'field' => 'co.order_id',
+      'sort' => 'DESC',
+    ),
+    array(
+      'data' => t('Date created'),
+      'field' => 'co.created',
+      'sort' => 'DESC',
+    ),
+    array(
+      'data' => t('Created by'),
+      'field' => 'u.name',
+      'sort' => 'ASC',
+    ),
+  );
+
+  $select = db_select('commerce_order', 'co');
+  if (!$params['are_admin_orders']) {
+    $select->leftJoin('commerce_admin_order_order', 'cao', 'co.order_id = cao.order_id');
+  }
+  else {
+    $select->join('commerce_admin_order_order', 'cao', 'co.order_id = cao.order_id');
+  }
+  $select->leftJoin('users', 'u', 'co.uid = u.uid');
+  $select->fields('co', array('order_id', 'created'));
+  $select->fields('u', array('uid', 'name'));
+  if (!$params['are_admin_orders']) {
+    $select->isNull('cao.order_id');
+  }
+  $select->condition('co.created', $module_enabled_date, '<');
+  $select->orderBy('co.order_id', 'ASC');
+
+  $select = $select->extend('PagerDefault')->limit(50)
+    ->extend('TableSort')->orderByHeader($header);
+
+  $result = $select->execute();
+
+  $options = array();
+  while ($record = $result->fetchObject()) {
+    $options[$record->order_id] = array(
+      l(check_plain($record->order_id), 'admin/commerce/orders/' . check_plain($record->order_id) . '/view'),
+      date('Y-m-d H:i:sO', $record->created),
+      ($record->uid) ? l(check_plain($record->name), 'user/' . check_plain($record->uid)) : t('Anonymous'),
+    );
+  }
+
+  $form['order_table'] = array(
+    '#type' => 'tableselect',
+    '#header' => $header,
+    '#options' => $options,
+    '#empty' => t('No orders found'),
+  );
+
+  $form['pager'] = array(
+    '#theme' => 'pager',
+  );
+
+  $label = t('Update to non-admin order(s)');
+  if (!$params['are_admin_orders']) {
+    $label = t('Update to admin order(s)');
+  }
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => $label,
+  );
+
+  return $form;
+}
+
+/**
+ * Validate the admin/non-admin orders form. Make sure at least one order was 
+ * selected
+ */
+function commerce_admin_order_order_list_form_validate($form, &$form_state) {
+ $order_ids = commerce_admin_order_get_selected_order_ids($form_state['values']['order_table']);
+
+  if (!count($order_ids)) {
+    form_set_error('', t('You must select at least one order'));
+  }
+}
+
+/**
+ * Handle submission of the admin/non-admin orders forms
+ */
+function commerce_admin_order_order_list_form_submit($form, &$form_state) {
+  $order_ids = commerce_admin_order_get_selected_order_ids($form_state['values']['order_table']);
+  $operation = 'insert';
+
+  if ($form_state['triggering_element']['#value'] == t('Update to non-admin order(s)')) {
+    $operation = 'delete';
+  }
+
+  if ($order_ids) {
+    try {
+      if ($operation == 'insert') {
+        $query = db_insert('commerce_admin_order_order')->fields(array('order_id'));
+
+        foreach ($order_ids as $order_id) {
+          $query->values(array($order_id));
+        }
+
+        $query->execute();
+
+        drupal_set_message(t('!inserted Order(s) updated to be Commerce Admin 
+          order(s). ' . l(t('See log for details'), 'admin/reports/dblog'), 
+          array('!inserted' => count($order_ids))), 'status');
+      }
+      else {
+        $deleted = db_delete('commerce_admin_order_order')
+          ->condition('order_id', $order_ids, 'IN')
+          ->execute();
+
+        drupal_set_message(t('!deleted Order(s) updated to no longer be Commerce
+          Admin order(s). ' . l(t('See log for details'), 'admin/reports/dblog'),
+          array('!deleted' => count($order_ids))), 'status');
+      }
+
+      foreach ($order_ids as $order_id) {
+        watchdog('commerce_admin_order', t('Order @order_id has been
+          updated as Commerce Admin order. Operation was @operation.',
+          array('@order_id' => $order_id, '@operation' => $operation)));
+      }
+    }
+    catch (Exception $e) {
+      $message = t('Failed to @operation order id @order_id into/from 
+        commerce_admin_order_order table. Query: @query',
+        array(
+          '@order_id' => $order_id, 
+          '@query' => $e->query_string,
+          '@message' => $e->getMessage(),
+          '@operation' => $operation
+        )
+      );
+      watchdog('commerce_admin_order', $message);
+      drupal_set_message($message, 'error');
+    }
+  }
+}
+
+/**
+ * Return an array of order ids that were selected in a submitted form
+ */
+function commerce_admin_order_get_selected_order_ids($all_order_ids) {
+  $selected_order_ids = array();
+
+  foreach ($all_order_ids as $order_id => $selected) {
+    if ($selected) {
+      $selected_order_ids[] = $order_id;
+    }
+  }
+
+  return $selected_order_ids;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter()
+ */
+function commerce_admin_order_form_commerce_order_ui_order_form_alter(&$form, &$form_state, $form_id) {
+  if (!isset($form['#entity']->is_new)) {
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $form['#entity']->order_id);
+
+    if ($order_wrapper->is_admin_order->value()) {
+      $form['commerce_admin_order'] = array(
+        '#type' => 'fieldset',
+        '#weight' => '-50',
+        '#title' => t('Commerce Admin order'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+      );
+
+      $form['commerce_admin_order']['indicator'] = array(
+        '#prefix' => '<p>',
+        '#suffix' => '</p>',
+        '#markup' => t('This order was created via the Commerce back office system'),
+      );
+    }
+  }
+
+  $form['actions']['submit']['#submit'][] = 'commerce_admin_order_order_form_submit';
+}
+
+/**
+ * Additional 'Create an order' form submission handler
+ */
+function commerce_admin_order_order_form_submit($form, &$form_state) {
+  $order = $form_state['commerce_order'];
+
+  // New orders have same value for created and changed
+  if ($order->created == $order->changed) {
+    try {
+      $id = db_insert('commerce_admin_order_order')
+        ->fields(array(
+          'order_id' => $order->order_id,
+        ))
+        ->execute();
+
+      rules_invoke_event('commerce_admin_order_order_created', $order);
+    }
+    catch (Exception $e) {
+      $message = t('Failed to insert order id @order_id into 
+        commerce_admin_order_order table. Query: @query', 
+        array(
+          '@order_id' => $order_id, 
+          '@query' => $e->query_string, 
+          '@message' => $e->getMessage()
+        )
+      );
+      watchdog('commerce_admin_order', $message);
+      drupal_set_message($message, 'error');
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_property_info_alter()
+ */
+function commerce_admin_order_entity_property_info_alter(&$info) {
+  $info['commerce_order']['properties']['is_admin_order'] = array(
+    'type' => 'boolean',
+    'label' => 'Order created via admin?',
+    'description' => 'Indicates that an order was manually created via Drupal 
+      admin',
+    'getter callback' => 'commerce_admin_order_is_admin_order',
+  );
+}
+
+/**
+ * Return flag indicating whether or not an order was created via Drupal admin 
+ * form
+ */
+function commerce_admin_order_is_admin_order($order) {
+  $query = db_select('commerce_admin_order_order', 'cao');
+  $query->condition('cao.order_id', $order->order_id, '=');
+
+  if ($query->countQuery()->execute()->fetchField()) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Implements hook_commerce_order_commerce_order_update()
+ */
+function commerce_admin_order_commerce_order_update($order) {
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+
+  if ($order_wrapper->is_admin_order->value()) {
+    rules_invoke_event('commerce_admin_order_order_updated', $order);
+  }
+}
+
+/**
+ * Implements hook_commerce_order_commerce_order_delete()
+ */
+function commerce_admin_order_commerce_order_delete($order_id) {
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order_id);
+
+  if ($order_wrapper->is_admin_order->value()) {
+    $deleted = db_delete('commerce_admin_order_order')
+      ->condition('order_id', $order_wrapper->order_id->value(), '=')
+      ->execute();
+
+    if ($deleted) {
+      rules_invoke_event('commerce_admin_order_order_deleted', $order_id);
+    }
+    else {
+      $message = t('Failed to delete Commerce order from 
+        commerce_admin_order_order table. Order id is @order_id', 
+        array('@order_id' => $order_id)
+      );
+      watchdog('commerce_admin_order', $message);
+      drupal_set_message($message, 'error');
+    }
+  }
+}

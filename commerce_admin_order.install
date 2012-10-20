@@ -1,0 +1,39 @@
+<?php
+
+/**
+ * Implements hook_install()
+ */
+function commerce_admin_order_install() {
+  variable_set('commerce_admin_order_first_enabled', time());
+}
+
+/**
+ * Implements hook_uninstall()
+ */
+function commerce_admin_order_uninstall() {
+  variable_del('commerce_admin_order_first_enabled');
+}
+
+/**
+ * Implements hook_schema()
+ */
+function commerce_admin_order_schema() {
+  $schema['commerce_admin_order_order'] = array(
+    'fields' => array(
+      'order_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Order ID of order created via admin interface',
+      ),
+    ),
+    'primary key' => array(
+      'order_id'
+     ),
+    'indexes' => array(
+      'order_id' => array('order_id'),
+    ),
+  );
+
+  return $schema;
+}

@@ -1,0 +1,9 @@
+name = "Commerce Admin order"
+description = "Adds the ability track commerce orders created via the back office system, and react to operations on them"
+core = 7.x
+version = 7.x-1.0
+package = Commerce (contrib)
+dependencies[] = commerce
+dependencies[] = rules
+dependencies[] = entity
+files[] = commerce_admin_order.module
