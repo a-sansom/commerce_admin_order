@@ -1,0 +1,57 @@
+<?php
+/**
+ * @file
+ * 
+ */ 
+class CommerceAdminOrderTest extends CommerceBaseTestCase {
+  /**
+   * Order(s) created and manipulated in the process
+   */
+  // protected $orders;
+
+  /**
+   * Implementation of getInfo()
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Commerce Admin order',
+      'description' => 'Test functionality of the Commerce Admin order module',
+      'group' => 'Drupal Commerce (contrib)',
+    );
+  }
+
+  /**
+   * Implementation of setUp()
+   */
+  function setUp() {
+    // Enable all modules
+    $modules = parent::setUpHelper('all');
+    parent::setUp($modules);
+
+    // Create admin user
+    $this->admin_user = $this->createStoreAdmin();
+
+    // Log in admin user
+    $this->drupalLogin($this->admin_user);
+
+    // @todo Add any properties to the object that are to be used in the
+    // various test functions, eg. $this->order
+  }
+
+  // Actual tests...
+  function testCommerceAdminOrderXXX() {
+    // Go to commerce admin order administration page
+    // $this->drupalGet('admin/...');
+  }
+  
+  /*
+   * Test:
+   * 
+   * - The various admin pages return HTTP 200
+   * - The forms on each fo the admin pages work as designed. The non-admin 
+   * order form allows assigning to be an admin order and vice-versa for the 
+   * admin form
+   * - The Rules events fire at the correct times and produce messages to test
+   * against
+   */
+}

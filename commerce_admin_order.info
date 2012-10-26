@@ -7,3 +7,4 @@ dependencies[] = commerce
 dependencies[] = rules
 dependencies[] = entity
 files[] = commerce_admin_order.module
+files[] = commerce_admin_order.test
