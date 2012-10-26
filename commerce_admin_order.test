@@ -5,12 +5,19 @@
  */ 
 class CommerceAdminOrderTest extends CommerceBaseTestCase {
   /**
-   * Order(s) created and manipulated in the process
+   * Order(s) to be manipulated in tests
    */
-  // protected $orders;
+  protected $orders;
+
+  /**
+   * A store admin user
+   */
+  protected $store_admin_user;
 
   /**
    * Implementation of getInfo()
+   * 
+   * Information about module testing that shows in the testing /admin UI
    */
   public static function getInfo() {
     return array(
@@ -22,23 +29,37 @@ class CommerceAdminOrderTest extends CommerceBaseTestCase {
 
   /**
    * Implementation of setUp()
+   * 
+   * Anything that needs to be done to make this Drupal instance work the way 
+   * we require
    */
   function setUp() {
-    // Enable all modules
+    // Enable all Commerce modules
     $modules = parent::setUpHelper('all');
     parent::setUp($modules);
 
-    // Create admin user
-    $this->admin_user = $this->createStoreAdmin();
+    // Create store admin user. This user has the 'create commerce_order entities',
+    // and 'edit any commerce_order entity' permissions
+    $this->store_admin_user = $this->createStoreAdmin();
+    // Log in the newly created user
+    $this->drupalLogin($this->store_admin_user);
 
-    // Log in admin user
-    $this->drupalLogin($this->admin_user);
+    // Create some orders that can be used with tests
+    for ($i = 1; $i <= 5; $i++) {
+      // If no products are provided to createDummyOrder(), a single default
+      // product is created by default
+      $order = $this->createDummyOrder(
+        $this->store_admin_user->uid, 
+        array(), 
+        'completed'
+      );
+      $this->orders[] = $order;
+    }
 
-    // @todo Add any properties to the object that are to be used in the
-    // various test functions, eg. $this->order
+    // @todo Anyting else that's required to get the point of running tests
   }
 
-  // Actual tests...
+  // Define actual tests...
   function testCommerceAdminOrderXXX() {
     // Go to commerce admin order administration page
     // $this->drupalGet('admin/...');
