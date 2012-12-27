@@ -126,8 +126,8 @@ function commerce_admin_order_order_list_form($form, &$form_state, $params) {
   $select->fields('u', array('uid', 'name'));
   if (!$params['are_admin_orders']) {
     $select->isNull('cao.order_id');
+    $select->condition('co.created', $module_enabled_date, '<');^M
   }
-  $select->condition('co.created', $module_enabled_date, '<');
   $select->orderBy('co.order_id', 'ASC');
 
   $select = $select->extend('PagerDefault')->limit(50)
