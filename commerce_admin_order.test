@@ -1,13 +1,14 @@
 <?php
+
 /**
  * @file
  * 
  */ 
-class CommerceAdminOrderTest extends CommerceBaseTestCase {
+class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
   /**
    * Order(s) to be manipulated in tests
    */
-  protected $orders;
+  // protected $orders;
 
   /**
    * A store admin user
@@ -23,7 +24,7 @@ class CommerceAdminOrderTest extends CommerceBaseTestCase {
     return array(
       'name' => 'Commerce Admin order',
       'description' => 'Test functionality of the Commerce Admin order module',
-      'group' => 'Drupal Commerce (contrib)',
+      'group' => 'Commerce (contrib)',
     );
   }
 
@@ -33,46 +34,139 @@ class CommerceAdminOrderTest extends CommerceBaseTestCase {
    * Anything that needs to be done to make this Drupal instance work the way 
    * we require
    */
-  function setUp() {
+  public function setUp() {
     // Enable all Commerce modules
-    $modules = parent::setUpHelper('all');
+    $modules = parent::setUpHelper('all', array('commerce_admin_order'));
     parent::setUp($modules);
 
     // Create store admin user. This user has the 'create commerce_order entities',
     // and 'edit any commerce_order entity' permissions
     $this->store_admin_user = $this->createStoreAdmin();
-    // Log in the newly created user
+debug($this->store_admin_user, 'store_admin_user: ');
+    // Create some orders that can be used with tests
+    //for ($i = 1; $i <= 5; $i++) {
+      //$order = $this->createDummyOrder(
+      //  $this->store_admin_user->uid, 
+      //  array(), 
+      //  'completed'
+      //);
+
+      //$this->orders[$order->order_id] = $order;
+    //}
+
+    cache_clear_all();
+  }
+
+  // Test form that makes 'non-admin orders' into 'admin orders'
+  public function testCommerceAdminOrderNonAdminOrderListForm() {
     $this->drupalLogin($this->store_admin_user);
 
-    // Create some orders that can be used with tests
-    for ($i = 1; $i <= 5; $i++) {
-      // If no products are provided to createDummyOrder(), a single default
-      // product is created by default
-      $order = $this->createDummyOrder(
-        $this->store_admin_user->uid, 
-        array(), 
-        'completed'
-      );
-      $this->orders[] = $order;
-    }
-
-    // @todo Anyting else that's required to get the point of running tests
+    // Go to the /admin list of 'non-admin orders'
+    $this->drupalGet('admin/commerce/commerce_admin_order');
+    $this->assertResponse(200, t('Accessed /admin page listing non-admin orders successfully'));
+    
+    // @todo 
+    // - Programatically create an order (before navigating to form), returning 
+    // the order id
+    // - Select order/all orders on the form and submit it
+    // - Verify the order is no longer listed on the form (as it's now an admin 
+    // order)
+    // - Verify that the message '1 Order(s) updated to be Commerce Admin 
+    // order(s). See log for details' is displayed
   }
 
-  // Define actual tests...
-  function testCommerceAdminOrderXXX() {
-    // Go to commerce admin order administration page
-    // $this->drupalGet('admin/...');
+  // Test form that makes 'admin orders' into 'non-admin orders'
+  public function testCommerceAdminOrderAdminOrderListForm() {
+    $this->drupalLogin($this->store_admin_user);
+
+    // Go to the /admin list of 'admin orders'
+    $this->drupalGet('admin/commerce/commerce_admin_order');
+    $this->clickLink('Admin orders'); // CSS uppercases this in default theme
+    $this->assertResponse(200, t('Accessed /admin page listing admin orders successfully'));
+    
+    // @todo
+    // - Opposite of non-admin order steps
+    // - Verify tha the message '1 Order(s) updated to no longer be Commerce Admin order(s). See log 
+    // for details' is displayed
   }
+
+  // Test that the new Rules module events work
+  //public function testCommerceAdminOrderRulesEvents() {
+  //  $this->createTestEventMessages();
+  //}
+  
+  // Create Rules Events to display messages when our modules events happen
+  //public function createTestEventMessages() {
+    // @todo programatically create Rules events that show message on each event
+    // happening
+  //}
   
   /*
-   * Test:
-   * 
-   * - The various admin pages return HTTP 200
-   * - The forms on each fo the admin pages work as designed. The non-admin 
-   * order form allows assigning to be an admin order and vice-versa for the 
-   * admin form
-   * - The Rules events fire at the correct times and produce messages to test
-   * against
+   * Tests:
+   *
+   *   - Non-admin order list: 
+   *
+   *     http://d7.ck.localhost/admin/commerce/commerce_admin_order
+   *
+   *     Selecting an order and submitting form should result in message 
+   *     '1 Order(s) updated to be Commerce Admin order(s). See log for details'
+   *
+   *   - Admin order list: 
+   *
+   *     http://d7.ck.localhost/admin/commerce/commerce_admin_order/admin_orders
+   *
+   *     Select an order and submitting the form should result in message
+   *     '1 Order(s) updated to no longer be Commerce Admin order(s). See log 
+   *     for details'
+   *
+   *   - Create 3 Rules at:
+   *
+   *     http://d7.ck.localhost/admin/config/workflow/rules
+   *
+   *     That outout messages to test against for each of the events defined by
+   *     the module. 'New order created via admin', 'Order created via admin 
+   *     updated' and 'Order created via admin deleted'.
+   *     
+   *     Go to http://d7.ck.localhost/admin/config/workflow/rules/reaction/add
+   *     Set 'Name' = 'testing_admin_order_create'
+   *     Set 'React on event' = 'New order created via admin'
+   *     Click 'Save'
+   *     Go to http://d7.ck.localhost/admin/config/workflow/rules/reaction/manage/rules_testing_admin_order_create
+   *     Click 'Add action'
+   *     Set 'Select the action to add' = 'Show a message on the site'
+   *     Set 'Value' = 'New order created via admin'
+   *     Click 'Save'
+   *     Message 'Your changes have been saved.' is shown
+   *     
+   *     Repeat for other events...
+   *     
+   *   - Create order to test event messages are shown and therefore the events
+   *     themselves are working
+   *     
+   *     Go http://d7.ck.localhost/admin/commerce/orders/add
+   *     Click 'Add line item'
+   *     Set 'Product SKU' = 'PROD-01'
+   *     Click 'Add product'
+   *     Set 'Full name' = 'Joe Bloggs'
+   *     Set 'Country' = 'United Kingdom'
+   *     Set 'Address 1' = 'Apsley House'
+   *     Set 'Address 2' = '149 Piccadilly'
+   *     Set 'City' = 'London'
+   *     Set 'State' = ''
+   *     Set 'Postal Code' = 'W1J 7NT'
+   *     Click 'Save order'
+   *     Confirm 'New order created via admin' message is displayed
+   *     (Possible to ge the order id of the created order? So that the 
+   *     subsequent tests can be done by operating on the vreated order?)
+   *
+   *     Go http://d7.ck.localhost/admin/commerce/orders/<order_id_just_created>/edit
+   *     Set 'Full name' = 'John Smith'
+   *     Click 'Save order'
+   *     Check that message 'Commerce Admin order updated event' shown
+   *     
+   *     Go http://d7.ck.localhost/admin/commerce/orders/<order_id_just_updated>/delete
+   *     Click 'Delete'
+   *     Check that 'Commerce admin order deleted event' message is shown
+   *     
    */
 }
