@@ -21,3 +21,8 @@ Submitting the form adds the orders selected ids to the
 commerce_admin_order_order database table. The form is available at:
 
   /admin/commerce/commerce_admin_order
+
+If you are going to run the module tests, please see the following comment
+about the environment you try to run them in:
+
+  http://drupal.org/node/1801928
