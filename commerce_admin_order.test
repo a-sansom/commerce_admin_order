@@ -2,14 +2,9 @@
 
 /**
  * @file
- * 
+ * Tests for the commerce admin order module.
  */ 
 class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
-  /**
-   * Order(s) to be manipulated in tests
-   */
-  // protected $orders;
-
   /**
    * A store admin user
    */
@@ -17,8 +12,6 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
 
   /**
    * Implementation of getInfo()
-   * 
-   * Information about module testing that shows in the testing /admin UI
    */
   public static function getInfo() {
     return array(
@@ -30,19 +23,15 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
 
   /**
    * Implementation of setUp()
-   * 
-   * Anything that needs to be done to make this Drupal instance work the way 
-   * we require
    */
   public function setUp() {
-    // Enable all Commerce modules
     $modules = parent::setUpHelper('all', array('commerce_admin_order'));
     parent::setUp($modules);
 
-    // Create store admin user. This user has the 'create commerce_order entities',
-    // and 'edit any commerce_order entity' permissions
     $this->store_admin_user = $this->createStoreAdmin();
-debug($this->store_admin_user, 'store_admin_user: ');
+
+    $this->module_enabled_date = variable_get('commerce_admin_order_first_enabled');
+
     // Create some orders that can be used with tests
     //for ($i = 1; $i <= 5; $i++) {
       //$order = $this->createDummyOrder(
@@ -61,89 +50,137 @@ debug($this->store_admin_user, 'store_admin_user: ');
   public function testCommerceAdminOrderNonAdminOrderListForm() {
     $this->drupalLogin($this->store_admin_user);
 
-    // Go to the /admin list of 'non-admin orders'
+    // Create an order so it can be converted into an admin order
+    $product = $this->createDummyProduct(
+      'PROD-01',
+      'Product One'
+    );
+
+    $order = $this->createDummyOrder(
+      $this->store_admin_user->uid, 
+      array($product->product_id => 1), 
+      'complete'
+    );
+
+    // Update commerce_order.created value to day before module enabled so that 
+    // the order will show on the non-admin orders list/page
+    $updated = db_update('commerce_order')
+      ->fields(array(
+        'created' => ($this->module_enabled_date - (60 * 60 * 24))
+      ))
+      ->condition('order_id', $order->order_id, '=');
+
+    // Go to the list of 'non-admin orders'
     $this->drupalGet('admin/commerce/commerce_admin_order');
-    $this->assertResponse(200, t('Accessed /admin page listing non-admin orders successfully'));
-    
-    // @todo 
-    // - Programatically create an order (before navigating to form), returning 
-    // the order id
-    // - Select order/all orders on the form and submit it
-    // - Verify the order is no longer listed on the form (as it's now an admin 
-    // order)
-    // - Verify that the message '1 Order(s) updated to be Commerce Admin 
-    // order(s). See log for details' is displayed
+    $this->assertResponse(200, t('Accessed page listing non-admin orders successfully'));
+
+    // 'Update to admin order(s)' the created order
+    $key = 'order_table[' . $order->order_id . ']';
+    $data = array($key => $order->order_id);
+    $this->drupalPost(NULL, $data, t('Update to admin order(s)'));
+
+    // Verify that the correct message is displayed
+    $this->assertText(
+      t('1 Order(s) updated to be Commerce Admin order(s). See log for details'),
+      '\'1 Order(s) updated to be Commerce Admin order(s). See log for details\' text appears on the page'
+    );
+
+    // Verify order ID inserted in commerce_admin_order_order table
+    $select = db_select('commerce_admin_order_order', 'caoo')
+      ->fields('caoo', array('order_id'))
+      ->condition('caoo.order_id', $order->order_id, '=');
+
+    $count = $select->countQuery()->execute()->fetchField();
+
+    $this->assertIdentical($count, 1, 'Record exists in commerce_admin_order_order table');
+
+    // Verify that error message is displayed if the form is submitted without
+    // any order(s) selected
+    $this->drupalGet('admin/commerce/commerce_admin_order');
+    $this->assertResponse(200, t('Accessed page listing non-admin orders successfully'));
+
+    $this->drupalPost(NULL, array(), t('Update to admin order(s)'));
+
+    $this->assertText(
+      t('You must select at least one order'),
+      '\'You must select at least one order\' text appears on the page'
+    );
   }
 
   // Test form that makes 'admin orders' into 'non-admin orders'
   public function testCommerceAdminOrderAdminOrderListForm() {
     $this->drupalLogin($this->store_admin_user);
 
-    // Go to the /admin list of 'admin orders'
+    // Create an order so it can be converted from an admin order
+    $product = $this->createDummyProduct(
+      'PROD-01',
+      'Product One'
+    );
+
+    $order = $this->createDummyOrder(
+      $this->store_admin_user->uid, 
+      array($product->product_id => 1), 
+      'complete'
+    );
+
+    // Simulate the conversion to an admin order
+    $query = db_insert('commerce_admin_order_order')
+      ->fields(array(
+        'order_id' => $order->order_id
+      ))
+      ->execute();
+
+    // Go to the list of 'admin orders'
     $this->drupalGet('admin/commerce/commerce_admin_order');
     $this->clickLink('Admin orders'); // CSS uppercases this in default theme
-    $this->assertResponse(200, t('Accessed /admin page listing admin orders successfully'));
+    $this->assertResponse(200, t('Accessed page listing admin orders successfully'));
+
+    $key = 'order_table[' . $order->order_id . ']';
+    $data = array($key => $order->order_id);
+    $this->drupalPost(NULL, $data, t('Update to non-admin order(s)'));
+
+    $this->assertText(
+      t('1 Order(s) updated to no longer be Commerce Admin order(s). See log for details'),
+      '\'1 Order(s) updated to no longer be Commerce Admin order(s). See log for details\' text appears on the page'
+    );
+
+    // Verify order ID no longer exists in commerce_admin_order_order table
+    $select = db_select('commerce_admin_order_order', 'caoo')
+      ->fields('caoo', array('order_id'))
+      ->condition('caoo.order_id', $order->order_id, '=');
+
+    $count = $select->countQuery()->execute()->fetchField();
+
+    $this->assertIdentical($count, 0, 'Record no longer exists in commerce_admin_order_order table');
+
+    // Verify that error message is displayed if the form is submitted without
+    // any order(s) selected
+    $this->drupalGet('admin/commerce/commerce_admin_order');
+    $this->clickLink('Admin orders');
+    $this->assertResponse(200, t('Accessed page listing non-admin orders successfully'));
     
-    // @todo
-    // - Opposite of non-admin order steps
-    // - Verify tha the message '1 Order(s) updated to no longer be Commerce Admin order(s). See log 
-    // for details' is displayed
+    $this->drupalPost(NULL, array(), t('Update to non-admin order(s)'));
+    
+    $this->assertText(
+      t('You must select at least one order'),
+      '\'You must select at least one order\' text appears on the page'
+    );
   }
 
-  // Test that the new Rules module events work
-  //public function testCommerceAdminOrderRulesEvents() {
-  //  $this->createTestEventMessages();
-  //}
-  
-  // Create Rules Events to display messages when our modules events happen
-  //public function createTestEventMessages() {
-    // @todo programatically create Rules events that show message on each event
-    // happening
-  //}
-  
+/*
+  // Test that the Rules module events work
+  public function testCommerceAdminOrderRulesEvents() {
+    // 'Admin order created.' - See commerce_checkout.test for example of populating form billing data
+    // 'Admin order updated.' - Can test this and deleted by creating an order and inserting that order id into the module table
+    // 'Admin order deleted.'
+  }
+*/
   /*
    * Tests:
-   *
-   *   - Non-admin order list: 
-   *
-   *     http://d7.ck.localhost/admin/commerce/commerce_admin_order
-   *
-   *     Selecting an order and submitting form should result in message 
-   *     '1 Order(s) updated to be Commerce Admin order(s). See log for details'
-   *
-   *   - Admin order list: 
-   *
-   *     http://d7.ck.localhost/admin/commerce/commerce_admin_order/admin_orders
-   *
-   *     Select an order and submitting the form should result in message
-   *     '1 Order(s) updated to no longer be Commerce Admin order(s). See log 
-   *     for details'
-   *
-   *   - Create 3 Rules at:
-   *
-   *     http://d7.ck.localhost/admin/config/workflow/rules
-   *
-   *     That outout messages to test against for each of the events defined by
-   *     the module. 'New order created via admin', 'Order created via admin 
-   *     updated' and 'Order created via admin deleted'.
-   *     
-   *     Go to http://d7.ck.localhost/admin/config/workflow/rules/reaction/add
-   *     Set 'Name' = 'testing_admin_order_create'
-   *     Set 'React on event' = 'New order created via admin'
-   *     Click 'Save'
-   *     Go to http://d7.ck.localhost/admin/config/workflow/rules/reaction/manage/rules_testing_admin_order_create
-   *     Click 'Add action'
-   *     Set 'Select the action to add' = 'Show a message on the site'
-   *     Set 'Value' = 'New order created via admin'
-   *     Click 'Save'
-   *     Message 'Your changes have been saved.' is shown
-   *     
-   *     Repeat for other events...
-   *     
    *   - Create order to test event messages are shown and therefore the events
    *     themselves are working
    *     
-   *     Go http://d7.ck.localhost/admin/commerce/orders/add
+   *     Go admin/commerce/orders/add
    *     Click 'Add line item'
    *     Set 'Product SKU' = 'PROD-01'
    *     Click 'Add product'
@@ -157,14 +194,14 @@ debug($this->store_admin_user, 'store_admin_user: ');
    *     Click 'Save order'
    *     Confirm 'New order created via admin' message is displayed
    *     (Possible to ge the order id of the created order? So that the 
-   *     subsequent tests can be done by operating on the vreated order?)
+   *     subsequent tests can be done by operating on the created order?)
    *
-   *     Go http://d7.ck.localhost/admin/commerce/orders/<order_id_just_created>/edit
+   *     Go admin/commerce/orders/<order_id_just_created>/edit
    *     Set 'Full name' = 'John Smith'
    *     Click 'Save order'
    *     Check that message 'Commerce Admin order updated event' shown
    *     
-   *     Go http://d7.ck.localhost/admin/commerce/orders/<order_id_just_updated>/delete
+   *     Go admin/commerce/orders/<order_id_just_updated>/delete
    *     Click 'Delete'
    *     Check that 'Commerce admin order deleted event' message is shown
    *     
