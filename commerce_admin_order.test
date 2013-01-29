@@ -92,7 +92,7 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
 
     $count = $select->countQuery()->execute()->fetchField();
 
-    $this->assertIdentical($count, 1, 'Record exists in commerce_admin_order_order table');
+    $this->assertEqual($count, 1, 'Record exists in commerce_admin_order_order table');
 
     // Verify that error message is displayed if the form is submitted without
     // any order(s) selected
@@ -151,7 +151,7 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
 
     $count = $select->countQuery()->execute()->fetchField();
 
-    $this->assertIdentical($count, 0, 'Record no longer exists in commerce_admin_order_order table');
+    $this->assertEqual($count, 0, 'Record no longer exists in commerce_admin_order_order table');
 
     // Verify that error message is displayed if the form is submitted without
     // any order(s) selected
