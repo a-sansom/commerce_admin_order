@@ -29,27 +29,15 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
     parent::setUp($modules);
 
     $this->store_admin_user = $this->createStoreAdmin();
+    $this->drupalLogin($this->store_admin_user);
 
     $this->module_enabled_date = variable_get('commerce_admin_order_first_enabled');
-
-    // Create some orders that can be used with tests
-    //for ($i = 1; $i <= 5; $i++) {
-      //$order = $this->createDummyOrder(
-      //  $this->store_admin_user->uid, 
-      //  array(), 
-      //  'completed'
-      //);
-
-      //$this->orders[$order->order_id] = $order;
-    //}
 
     cache_clear_all();
   }
 
   // Test form that makes 'non-admin orders' into 'admin orders'
   public function testCommerceAdminOrderNonAdminOrderListForm() {
-    $this->drupalLogin($this->store_admin_user);
-
     // Create an order so it can be converted into an admin order
     $product = $this->createDummyProduct(
       'PROD-01',
@@ -109,8 +97,6 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
 
   // Test form that makes 'admin orders' into 'non-admin orders'
   public function testCommerceAdminOrderAdminOrderListForm() {
-    $this->drupalLogin($this->store_admin_user);
-
     // Create an order so it can be converted from an admin order
     $product = $this->createDummyProduct(
       'PROD-01',
@@ -167,43 +153,54 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
     );
   }
 
-/*
-  // Test that the Rules module events work
-  public function testCommerceAdminOrderRulesEvents() {
-    // 'Admin order created.' - See commerce_checkout.test for example of populating form billing data
-    // 'Admin order updated.' - Can test this and deleted by creating an order and inserting that order id into the module table
-    // 'Admin order deleted.'
+  // Test that the admin order created event happens
+  public function testCommerceAdminOrderOrderCreatedEvent() {
+    $this->drupalGet('admin/commerce/orders/add');
+
+    // Minimal order creation (as per commerce order ui test)
+    $country_field = 'commerce_customer_billing[und][profiles][0][commerce_customer_address][und][0][country]';
+    $this->drupalPostAJAX(NULL, array($country_field => 'GB'), $country_field);
+    $this->drupalPost(NULL, array('name' => $this->store_admin_user->name), t('Save order', array(), array('context' => 'a drupal commerce order')));
+
+    $this->assertText(t('Admin order created.'), '\'commerce_admin_order_order_created\' event triggered');
   }
-*/
-  /*
-   * Tests:
-   *   - Create order to test event messages are shown and therefore the events
-   *     themselves are working
-   *     
-   *     Go admin/commerce/orders/add
-   *     Click 'Add line item'
-   *     Set 'Product SKU' = 'PROD-01'
-   *     Click 'Add product'
-   *     Set 'Full name' = 'Joe Bloggs'
-   *     Set 'Country' = 'United Kingdom'
-   *     Set 'Address 1' = 'Apsley House'
-   *     Set 'Address 2' = '149 Piccadilly'
-   *     Set 'City' = 'London'
-   *     Set 'State' = ''
-   *     Set 'Postal Code' = 'W1J 7NT'
-   *     Click 'Save order'
-   *     Confirm 'New order created via admin' message is displayed
-   *     (Possible to ge the order id of the created order? So that the 
-   *     subsequent tests can be done by operating on the created order?)
-   *
-   *     Go admin/commerce/orders/<order_id_just_created>/edit
-   *     Set 'Full name' = 'John Smith'
-   *     Click 'Save order'
-   *     Check that message 'Commerce Admin order updated event' shown
-   *     
-   *     Go admin/commerce/orders/<order_id_just_updated>/delete
-   *     Click 'Delete'
-   *     Check that 'Commerce admin order deleted event' message is shown
-   *     
-   */
+
+  // Test that the admin order updated event happens
+  public function testCommerceAdminOrderOrderUpdatedEvent() {
+    // Create order then edit it, checking only the edit message
+    $this->drupalGet('admin/commerce/orders/add');
+
+    $country_field = 'commerce_customer_billing[und][profiles][0][commerce_customer_address][und][0][country]';
+    $this->drupalPostAJAX(NULL, array($country_field => 'GB'), $country_field);
+    $this->drupalPost(NULL, array('name' => $this->store_admin_user->name), t('Save order', array(), array('context' => 'a drupal commerce order')));
+
+    // Get hold of the order by user id, so we can use order id in subsequent requests
+    $this->order = reset(commerce_order_load_multiple(array(), array('uid' => $this->store_admin_user->uid)));
+    entity_get_controller('commerce_order')->resetCache();
+
+    $this->drupalGet('admin/commerce/orders/' . $this->order->order_id . '/edit');
+    $this->drupalPostAJAX(NULL, array($country_field => 'AF'), $country_field);
+    $this->drupalPost(NULL, array(), t('Save order'));
+
+    $this->assertText(t('Admin order updated.'), '\'commerce_admin_order_order_updated\' event triggered');
+  }
+
+  // Test that the admin order deleted event happens
+  public function testCommerceAdminOrderOrderDeletedEvent() {
+    // Create order then delete it, checking only the delete message
+    $this->drupalGet('admin/commerce/orders/add');
+    
+    $country_field = 'commerce_customer_billing[und][profiles][0][commerce_customer_address][und][0][country]';
+    $this->drupalPostAJAX(NULL, array($country_field => 'GB'), $country_field);
+    $this->drupalPost(NULL, array('name' => $this->store_admin_user->name), t('Save order', array(), array('context' => 'a drupal commerce order')));
+
+    // Get hold of the order by user id, so we can use order id in subsequent requests
+    $this->order = reset(commerce_order_load_multiple(array(), array('uid' => $this->store_admin_user->uid)));
+    entity_get_controller('commerce_order')->resetCache();
+
+    $this->drupalGet('admin/commerce/orders/' . $this->order->order_id . '/delete');
+    $this->drupalPost(NULL, array(), t('Delete'));
+
+    $this->assertText(t('Admin order deleted.'), '\'commerce_admin_order_order_deleted\' event triggered');
+  }
 }
