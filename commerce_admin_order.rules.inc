@@ -37,5 +37,38 @@ function commerce_admin_order_rules_event_info() {
         ),
       ),
     ),
+    'commerce_admin_order_payment_transaction_updated' => array(
+      'label' => t('Order created via admin payment updated'),
+      'group' => 'Commerce Admin order',
+      'module' => 'commerce_admin_order',
+      'variables' => array(
+        'commerce_payment_transaction' => array(
+          'type' => 'commerce_payment_transaction',
+          'label' => t('The updated payment transaction')
+        ),
+      ),
+    ),
+    'commerce_admin_order_payment_transaction_inserted' => array(
+      'label' => t('Order created via admin payment inserted'),
+      'group' => 'Commerce Admin order',
+      'module' => 'commerce_admin_order',
+      'variables' => array(
+        'commerce_payment_transaction' => array(
+          'type' => 'commerce_payment_transaction',
+          'label' => t('The inserted payment transaction')
+        ),
+      ),
+    ),
+    'commerce_admin_order_payment_transaction_deleted' => array(
+      'label' => t('Order created via admin payment deleted'),
+      'group' => 'Commerce Admin order',
+      'module' => 'commerce_admin_order',
+      'variables' => array(
+        'commerce_payment_transaction' => array(
+          'type' => 'commerce_payment_transaction',
+          'label' => t('The deleted payment transaction')
+        ),
+      ),
+    ),
   );
 }

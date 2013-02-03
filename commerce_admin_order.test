@@ -203,4 +203,56 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
 
     $this->assertText(t('Admin order deleted.'), '\'commerce_admin_order_order_deleted\' event triggered');
   }
+
+  // Test the admin order payment transaction created event
+  public function testCommerceAdminOrderPaymentCreatedEvent() {
+    $this->drupalGet('admin/commerce/orders/add');
+    
+    $country_field = 'commerce_customer_billing[und][profiles][0][commerce_customer_address][und][0][country]';
+    $this->drupalPostAJAX(NULL, array($country_field => 'GB'), $country_field);
+    $this->drupalPost(NULL, array('name' => $this->store_admin_user->name), t('Save order', array(), array('context' => 'a drupal commerce order')));
+
+    $this->order = reset(commerce_order_load_multiple(array(), array('uid' => $this->store_admin_user->uid)));
+    entity_get_controller('commerce_order')->resetCache();
+
+    $this->drupalGet('admin/commerce/orders/' . $this->order->order_id . '/payment');
+    $this->drupalPost(NULL, array('payment_method' => 'commerce_payment_example|commerce_payment_commerce_payment_example'), t('Add payment'));
+
+    $this->drupalPost(NULL, array('payment_details[name]' => $this->store_admin_user->name), t('Save'));
+
+    $this->assertText(t('Admin order payment transaction inserted.'), '\'commerce_admin_order_payment_transaction_inserted\' event triggered');
+  }
+
+  // Test the admin order payment transaction Updated event
+  //public function testCommerceAdminOrderPaymentUpdatedEvent() {
+  //  @todo Need something like commerce_cheque as example payment method is
+  //  only create/delete-able
+  //}
+
+  // Test the admin order payment transaction deleted event
+  public function testCommerceAdminOrderPaymentDeletedEvent() {
+    $this->drupalGet('admin/commerce/orders/add');
+    
+    $country_field = 'commerce_customer_billing[und][profiles][0][commerce_customer_address][und][0][country]';
+    $this->drupalPostAJAX(NULL, array($country_field => 'GB'), $country_field);
+    $this->drupalPost(NULL, array('name' => $this->store_admin_user->name), t('Save order', array(), array('context' => 'a drupal commerce order')));
+
+    $this->order = reset(commerce_order_load_multiple(array(), array('uid' => $this->store_admin_user->uid)));
+    entity_get_controller('commerce_order')->resetCache();
+
+    $this->drupalGet('admin/commerce/orders/' . $this->order->order_id . '/payment');
+    $this->drupalPost(NULL, array('payment_method' => 'commerce_payment_example|commerce_payment_commerce_payment_example'), t('Add payment'));
+
+    $this->drupalPost(NULL, array('payment_details[name]' => $this->store_admin_user->name), t('Save'));
+
+    $select = db_select('commerce_payment_transaction', 'cpt')
+      ->fields('cpt', array('transaction_id'))
+      ->condition('cpt.order_id', $this->order->order_id, '=');
+
+    $transaction_id = $select->execute()->fetchField();
+    $this->drupalGet('admin/commerce/orders/' . $this->order->order_id . '/payment/' . $transaction_id . '/delete');
+    $this->drupalPost(NULL, array(), t('Delete'));
+
+    $this->assertText(t('Admin order payment transaction deleted.'), '\'commerce_admin_order_payment_transaction_deleted\' event triggered');
+  }
 }

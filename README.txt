@@ -13,6 +13,9 @@ Also defined by the module are some Rules module events. Currently these are:
   'New order created via admin'
   'Order created via admin updated'
   'Order created via admin deleted'
+  'Order created via admin payment inserted'
+  'Order created via admin payment updated'
+  'Order created via admin payment deleted'
 
 For existing orders, as there's no way of knowing if they were created via the
 admin form, the module adds a form that lists current orders that are not
