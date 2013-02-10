@@ -411,3 +411,12 @@ function commerce_admin_order_entity_view_alter(&$build, $type) {
     }
   }
 }
+
+/**
+ * Implements hook_views_api()
+ */
+function commerce_admin_order_views_api() {
+  return array(
+    'api' => 3,
+  );
+}
