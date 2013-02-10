@@ -17,6 +17,9 @@ Also defined by the module are some Rules module events. Currently these are:
   'Order created via admin payment updated'
   'Order created via admin payment deleted'
 
+The 'is admin order' boolean flag is made available to be displayed in Views in 
+the 'Commerce order' group as a field, 'Admin order?'.
+
 For existing orders, as there's no way of knowing if they were created via the
 admin form, the module adds a form that lists current orders that are not
 recorded as being admin orders and lets the user mark them as 'admin orders'.
