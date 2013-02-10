@@ -255,26 +255,6 @@ function commerce_admin_order_get_selected_order_ids($all_order_ids) {
  * Implements hook_form_FORM_ID_alter()
  */
 function commerce_admin_order_form_commerce_order_ui_order_form_alter(&$form, &$form_state, $form_id) {
-  if (!isset($form['#entity']->is_new)) {
-    $order_wrapper = entity_metadata_wrapper('commerce_order', $form['#entity']->order_id);
-
-    if ($order_wrapper->is_admin_order->value()) {
-      $form['commerce_admin_order'] = array(
-        '#type' => 'fieldset',
-        '#weight' => '-50',
-        '#title' => t('Commerce Admin order'),
-        '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
-      );
-
-      $form['commerce_admin_order']['indicator'] = array(
-        '#prefix' => '<p>',
-        '#suffix' => '</p>',
-        '#markup' => t('This order was created via the Commerce back office system'),
-      );
-    }
-  }
-
   $form['actions']['submit']['#submit'][] = 'commerce_admin_order_order_form_submit';
 }
 
@@ -404,5 +384,30 @@ function commerce_admin_order_commerce_payment_transaction_delete($transaction) 
 
   if ($order_wrapper->is_admin_order->value()) {
     rules_invoke_event('commerce_admin_order_payment_transaction_deleted', $transaction);
+  }
+}
+
+/**
+ * Implements hook_entity_view_alter()
+ */
+function commerce_admin_order_entity_view_alter(&$build, $type) {
+  $x = 0;
+  if ($type == 'commerce_order') {
+    $order_id = $build['#entity']->order_id;
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $order_id);
+
+    if ($order_wrapper->is_admin_order->value()) {
+      $build['commerce_admin_order'] = array(
+        '#type' => 'fieldset',
+        '#weight' => '-50',
+        '#title' => t('Commerce Admin order'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+      );
+
+      $build['commerce_admin_order']['indicator'] = array(
+        '#markup' => t('This order was created via the Commerce back office system'),
+      );
+    }
   }
 }
