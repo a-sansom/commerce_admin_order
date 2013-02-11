@@ -20,13 +20,14 @@ Also defined by the module are some Rules module events. Currently these are:
 The 'is admin order' boolean flag is made available to be displayed in Views in 
 the 'Commerce order' group as a field, 'Admin order?'.
 
-For existing orders, as there's no way of knowing if they were created via the
-admin form, the module adds a form that lists current orders that are not
-recorded as being admin orders and lets the user mark them as 'admin orders'.
-Submitting the form adds the orders selected ids to the
-commerce_admin_order_order database table. The form is available at:
+For orders in the system before this module was installed/enabled, there's no 
+way of knowing if they were created via the admin form. This module adds forms 
+that lists current orders that are not recorded as being admin orders and lets 
+the user mark them as 'admin orders' and vice-versa.
 
-  /admin/commerce/commerce_admin_order
+The forms are accessible via tabs on the Commerce orders page:
+
+  /admin/commerce/orders
 
 If you are going to run the module tests, please see the following comment
 about the environment you try to run them in:

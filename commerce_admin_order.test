@@ -59,7 +59,7 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
       ->condition('order_id', $order->order_id, '=');
 
     // Go to the list of 'non-admin orders'
-    $this->drupalGet('admin/commerce/commerce_admin_order');
+    $this->drupalGet('admin/commerce/orders/non_admin_orders');
     $this->assertResponse(200, t('Accessed page listing non-admin orders successfully'));
 
     // 'Update to admin order(s)' the created order
@@ -84,7 +84,7 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
 
     // Verify that error message is displayed if the form is submitted without
     // any order(s) selected
-    $this->drupalGet('admin/commerce/commerce_admin_order');
+    $this->drupalGet('admin/commerce/orders/non_admin_orders');
     $this->assertResponse(200, t('Accessed page listing non-admin orders successfully'));
 
     $this->drupalPost(NULL, array(), t('Update to admin order(s)'));
@@ -117,8 +117,7 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
       ->execute();
 
     // Go to the list of 'admin orders'
-    $this->drupalGet('admin/commerce/commerce_admin_order');
-    $this->clickLink('Admin orders'); // CSS uppercases this in default theme
+    $this->drupalGet('admin/commerce/orders/admin_orders');
     $this->assertResponse(200, t('Accessed page listing admin orders successfully'));
 
     $key = 'order_table[' . $order->order_id . ']';
@@ -141,12 +140,11 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
 
     // Verify that error message is displayed if the form is submitted without
     // any order(s) selected
-    $this->drupalGet('admin/commerce/commerce_admin_order');
-    $this->clickLink('Admin orders');
+    $this->drupalGet('admin/commerce/orders/admin_orders');
     $this->assertResponse(200, t('Accessed page listing non-admin orders successfully'));
-    
+
     $this->drupalPost(NULL, array(), t('Update to non-admin order(s)'));
-    
+
     $this->assertText(
       t('You must select at least one order'),
       '\'You must select at least one order\' text appears on the page'

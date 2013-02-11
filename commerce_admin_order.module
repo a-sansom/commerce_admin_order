@@ -4,22 +4,14 @@
  * Implements hook_menu()
  */
 function commerce_admin_order_menu() {
-  $items['admin/commerce/commerce_admin_order'] = array(
-    'title' => t('Commerce Admin orders'),
-    'page callback' => 'commerce_admin_non_admin_orders_page',
-    'page arguments' => array(''),
-    'description' => t('Manage admin orders'),
-    'access arguments' => array('administer commerce_order entities'),
-    'type' => MENU_NORMAL_ITEM,
-  );
-
-  $items['admin/commerce/commerce_admin_order/non_admin_orders'] = array(
+  $items['admin/commerce/orders/non_admin_orders'] = array(
     'title' => t('Non-admin orders'),
+    'page callback' => 'commerce_admin_non_admin_orders_page',
     'access arguments' => array('administer commerce_order entities'),
-    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'type' => MENU_LOCAL_TASK,
   );
 
-  $items['admin/commerce/commerce_admin_order/admin_orders'] = array(
+  $items['admin/commerce/orders/admin_orders'] = array(
     'title' => t('Admin orders'),
     'page callback' => 'commerce_admin_admin_orders_page',
     'access arguments' => array('administer commerce_order entities'),
@@ -75,7 +67,7 @@ function commerce_admin_admin_orders_page() {
       '#type' => 'markup',
       '#markup' => t('Orders created before that date need to be manually marked
         as created by the back office system by using the form on the ' 
-        . l('non-admin orders page', 'admin/commerce/commerce_admin_order/non_admin_orders') . '.'),
+        . l('non-admin orders page', 'admin/commerce/orders/non_admin_orders') . '.'),
       '#prefix' => '<p>',
       '#suffix' => '</p>',
     ),
