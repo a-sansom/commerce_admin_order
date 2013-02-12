@@ -6,7 +6,7 @@
 function commerce_admin_order_menu() {
   $items['admin/commerce/orders/non_admin_orders'] = array(
     'title' => t('Non-admin orders'),
-    'page callback' => 'commerce_admin_non_admin_orders_page',
+    'page callback' => 'commerce_admin_order_non_admin_orders_page',
     'access callback' => 'commerce_admin_order_menu_access',
     'access arguments' => array('administer commerce admin orders', 'classify order as admin order'),
     'type' => MENU_LOCAL_TASK,
@@ -14,7 +14,7 @@ function commerce_admin_order_menu() {
 
   $items['admin/commerce/orders/admin_orders'] = array(
     'title' => t('Admin orders'),
-    'page callback' => 'commerce_admin_admin_orders_page',
+    'page callback' => 'commerce_admin_order_admin_orders_page',
     'access callback' => 'commerce_admin_order_menu_access',
     'access arguments' => array('administer commerce admin orders', 'rescind admin order classification'),
     'type' => MENU_LOCAL_TASK,
@@ -56,7 +56,7 @@ function commerce_admin_order_menu_access() {
 /**
  * Admin page listing orders, which are not recorded as admin orders
  */
-function commerce_admin_non_admin_orders_page() {
+function commerce_admin_order_non_admin_orders_page() {
   $module_enabled_date = variable_get('commerce_admin_order_first_enabled', 0);
 
   $page = array();
@@ -81,7 +81,7 @@ function commerce_admin_non_admin_orders_page() {
  * Page listing orders which were created before the module was enabled that
  * have been re-classified as 'admin orders'
  */
-function commerce_admin_admin_orders_page() {
+function commerce_admin_order_admin_orders_page() {
   $module_enabled_date = variable_get('commerce_admin_order_first_enabled', 0);
 
   $page = array();
