@@ -63,9 +63,9 @@ function commerce_admin_non_admin_orders_page() {
 
   $page['summary'] = array(
     '#type' => 'markup',
-    '#markup' => t('Orders created before the Commerce Admin order module was 
-      enabled (@module_enabled) that are not considered to have been created 
-      via the Commerce back office system', 
+    '#markup' => t('Orders that were created before the Commerce Admin order 
+      module was enabled (@module_enabled_date) that are not considered to have 
+      been created via the Commerce back office system.', 
       array('@module_enabled' => date('Y-m-d H:i:sO', $module_enabled_date))),
     '#prefix' => '<p>',
     '#suffix' => '</p>',
@@ -78,7 +78,8 @@ function commerce_admin_non_admin_orders_page() {
 }
 
 /**
- * Admin page listing orders, which are recorded as admin orders
+ * Page listing orders which were created before the module was enabled that
+ * have been re-classified as 'admin orders'
  */
 function commerce_admin_admin_orders_page() {
   $module_enabled_date = variable_get('commerce_admin_order_first_enabled', 0);
@@ -88,18 +89,10 @@ function commerce_admin_admin_orders_page() {
   $page['summary'] = array(
     'paragraph_1' => array(
       '#type' => 'markup',
-      '#markup' => t('Orders that are known to have been created via the Commerce 
-        back office system. Orders since the Commerce Admin order module was 
-        enabled on @module_enabled_date are automatically added to this list.', 
+      '#markup' => t('Orders that were created before the Commerce Admin order 
+          module was enabled (@module_enabled_date) that have been 
+          re-classified as having been created by the back office system.', 
         array('@module_enabled_date' => date('Y-m-d H:i:sO', $module_enabled_date))),
-      '#prefix' => '<p>',
-      '#suffix' => '</p>',
-    ),
-    'paragraph_2' => array(
-      '#type' => 'markup',
-      '#markup' => t('Orders created before that date need to be manually marked
-        as created by the back office system by using the form on the ' 
-        . l('non-admin orders page', 'admin/commerce/orders/non_admin_orders') . '.'),
       '#prefix' => '<p>',
       '#suffix' => '</p>',
     ),
@@ -112,10 +105,23 @@ function commerce_admin_admin_orders_page() {
 }
 
 /**
- * Pager form that lists either orders created before the module was enabled 
- * that are not known to have been created in via the Commerce back office 
- * system, or a list or orders that are known to be created via the back office
- * system
+ * Pager form that lists either: 
+ * 
+ * - Orders created before this module was enabled and therefore are not known 
+ * to have been created via the Commerce back office system (non-admin orders)
+ *
+ * Or:
+ * 
+ *  - A list of orders that were created before the module was enabled and that
+ * have since been reclassified as having been created via the back office 
+ * system (admin orders).
+ * 
+ * Users with the appropriate permissions can use this form to reclassify
+ * specific orders from those lists, as required.
+ * 
+ * Orders created by the back odffice system after this module was enabled are 
+ * not listed on either screen as they are admin orders, without doubt and will
+ * have been recorded as so by this module.
  */
 function commerce_admin_order_order_list_form($form, &$form_state, $params) {
   $module_enabled_date = variable_get('commerce_admin_order_first_enabled', 0);
@@ -150,8 +156,8 @@ function commerce_admin_order_order_list_form($form, &$form_state, $params) {
   $select->fields('u', array('uid', 'name'));
   if (!$params['are_admin_orders']) {
     $select->isNull('cao.order_id');
-    $select->condition('co.created', $module_enabled_date, '<');
   }
+  $select->condition('co.created', $module_enabled_date, '<');
   $select->orderBy('co.order_id', 'ASC');
 
   $select = $select->extend('PagerDefault')->limit(50)
