@@ -7,18 +7,50 @@ function commerce_admin_order_menu() {
   $items['admin/commerce/orders/non_admin_orders'] = array(
     'title' => t('Non-admin orders'),
     'page callback' => 'commerce_admin_non_admin_orders_page',
-    'access arguments' => array('administer commerce_order entities'),
+    'access callback' => 'commerce_admin_order_menu_access',
+    'access arguments' => array('administer commerce admin orders', 'classify order as admin order'),
     'type' => MENU_LOCAL_TASK,
   );
 
   $items['admin/commerce/orders/admin_orders'] = array(
     'title' => t('Admin orders'),
     'page callback' => 'commerce_admin_admin_orders_page',
-    'access arguments' => array('administer commerce_order entities'),
+    'access callback' => 'commerce_admin_order_menu_access',
+    'access arguments' => array('administer commerce admin orders', 'rescind admin order classification'),
     'type' => MENU_LOCAL_TASK,
   );
 
   return $items;
+}
+
+/**
+ * Implements hook_permission()
+ */
+function commerce_admin_order_permission() {
+  return array(
+    'administer commerce admin orders' => array(
+      'title' => t('Administer Commerce order admin order classification'),
+    ),
+    'classify order as admin order' => array(
+      'title' => t('Classify Commerce order(s) as admin order(s)'),
+    ),
+    'rescind admin order classification' => array(
+      'title' => t('Rescind admin order classification from Commerce order(s)'),
+    ),
+  );
+}
+
+/**
+ * Custom menu item access control
+ */
+function commerce_admin_order_menu_access() {
+  foreach (func_get_args() as $permission) {
+    if (user_access($permission)) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
 }
 
 /**
