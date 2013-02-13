@@ -421,7 +421,6 @@ function commerce_admin_order_commerce_payment_transaction_delete($transaction) 
  * Implements hook_entity_view_alter()
  */
 function commerce_admin_order_entity_view_alter(&$build, $type) {
-  $x = 0;
   if ($type == 'commerce_order') {
     $order_id = $build['#entity']->order_id;
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order_id);
