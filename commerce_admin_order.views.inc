@@ -28,6 +28,26 @@ function commerce_admin_order_views_data() {
         'handler' => 'views_handler_field_boolean',
       ),
     ),
+    'creator_uid' => array(
+      'title' => 'Order creator Uid',
+      'help' => t("The order creator's ID"),
+      'field' => array(
+        'handler' => 'views_handler_field_numeric',
+      ),
+      'filter' => array(
+        'title' => t('Creator name'),
+        'handler' => 'views_handler_filter_user_name',
+      ),
+      'relationship' => array(
+        'title' => t('Creator'),
+        'help' => t("Relate this order to its creator's user account"),
+        'handler' => 'views_handler_relationship',
+        'base' => 'users',
+        'base field' => 'uid',
+        'field' => 'creator_uid',
+        'label' => t('Order creator'),
+      ),
+    ),
   );
 
   return $data;
