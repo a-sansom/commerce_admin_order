@@ -26,6 +26,12 @@ function commerce_admin_order_schema() {
         'not null' => TRUE,
         'description' => 'Order ID of order created via admin interface',
       ),
+      'creator_uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'User ID of user that initially created the order',
+      ),
     ),
     'primary key' => array(
       'order_id'

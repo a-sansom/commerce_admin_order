@@ -224,10 +224,14 @@ function commerce_admin_order_order_list_form_submit($form, &$form_state) {
   if ($order_ids) {
     try {
       if ($operation == 'insert') {
-        $query = db_insert('commerce_admin_order_order')->fields(array('order_id'));
+        $query = db_insert('commerce_admin_order_order')->fields(array(
+          'order_id',
+          'creator_uid',
+        ));
 
         foreach ($order_ids as $order_id) {
-          $query->values(array($order_id));
+          $uid = commerce_admin_order_order_first_revision_uid($order_id);
+          $query->values(array($order_id, $uid));
         }
 
         $query->execute();
@@ -297,9 +301,12 @@ function commerce_admin_order_order_form_submit($form, &$form_state) {
   // New orders have same value for created and changed
   if ($order->created == $order->changed) {
     try {
+      global $user;
+
       $id = db_insert('commerce_admin_order_order')
         ->fields(array(
           'order_id' => $order->order_id,
+          'creator_uid' => $user->uid,
         ))
         ->execute();
 
@@ -346,6 +353,21 @@ function commerce_admin_order_is_admin_order($order) {
   }
 
   return FALSE;
+}
+
+/**
+ * Return the user id of the first revision of an order. In other words, the uid
+ * of the user that initially created the order
+ */
+function commerce_admin_order_order_first_revision_uid($order_id) {
+  $query = db_select('commerce_order', 'co');
+  $query->join('commerce_order_revision', 'cor', 'co.order_id = cor.order_id');
+  $query->fields('cor', array('revision_uid'));
+  $query->addExpression('MIN(cor.revision_timestamp)', 'min_revision_timestamp');
+  $query->condition('co.order_id', $order_id);
+  $query->groupBy('co.order_id');
+
+  return $query->execute()->fetchField();
 }
 
 /**
