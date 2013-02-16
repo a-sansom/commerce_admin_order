@@ -2,11 +2,13 @@ This module keeps track of which Commerce orders are created through the
 Commerce back office (the 'Create an order' form at /admin/commerce/orders/add)
 and also which user created them.
 
-The module adds a boolean property, is_admin_order, to the Commerce order 
-entity. The property can be referenced in the following way:
+The module adds a couple of properties, 'is_admin_order' (boolean) and 
+'creator_uid' (integer) to the Commerce order entity. The properties can be 
+referenced in the following way:
 
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   $is_admin_order = $order_wrapper->is_admin_order->value();
+  $creator_user_id = $order_wrapper->creator_uid->value();
 
 Also defined by the module are some Rules module events. Currently these are:
 

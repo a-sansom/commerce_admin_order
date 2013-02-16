@@ -338,6 +338,13 @@ function commerce_admin_order_entity_property_info_alter(&$info) {
       admin',
     'getter callback' => 'commerce_admin_order_is_admin_order',
   );
+
+  $info['commerce_order']['properties']['creator_uid'] = array(
+    'type' => 'integer',
+    'label' => 'Order creator Uid',
+    'description' => 'ID of the user that created the order',
+    'getter callback' => 'commerce_admin_order_creator_uid',
+  );
 }
 
 /**
@@ -353,6 +360,18 @@ function commerce_admin_order_is_admin_order($order) {
   }
 
   return FALSE;
+}
+
+/**
+ * Return flag indicating whether or not an order was created via Drupal admin
+ * form
+ */
+function commerce_admin_order_creator_uid($order) {
+  $query = db_select('commerce_admin_order_order', 'caoo');
+  $query->fields('caoo', array('creator_uid'));
+  $query->condition('caoo.order_id', $order->order_id, '=');
+
+  return $query->execute()->fetchField();
 }
 
 /**
@@ -448,6 +467,8 @@ function commerce_admin_order_entity_view_alter(&$build, $type) {
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order_id);
 
     if ($order_wrapper->is_admin_order->value()) {
+      $creator = user_load($order_wrapper->creator_uid->value());
+
       $build['commerce_admin_order'] = array(
         '#type' => 'fieldset',
         '#weight' => '-50',
@@ -457,7 +478,9 @@ function commerce_admin_order_entity_view_alter(&$build, $type) {
       );
 
       $build['commerce_admin_order']['indicator'] = array(
-        '#markup' => t('This order was created via the Commerce back office system'),
+        '#markup' => t('"@creator_name" created this order via the Commerce back 
+          office system on @creation_time',
+          array('@creator_name' => $creator->name, '@creation_time' => date('Y-m-d H:i:sO', $build['#entity']->created))),
       );
     }
   }
