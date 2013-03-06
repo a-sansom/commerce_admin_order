@@ -8,3 +8,4 @@ dependencies[] = rules
 dependencies[] = entity
 files[] = commerce_admin_order.module
 files[] = commerce_admin_order.test
+files[] = commerce_admin_order_handler_field_created_by_user_name.inc

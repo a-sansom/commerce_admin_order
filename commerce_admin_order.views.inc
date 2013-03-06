@@ -34,18 +34,13 @@ function commerce_admin_order_views_data() {
       'field' => array(
         'handler' => 'views_handler_field_numeric',
       ),
-      'filter' => array(
-        'title' => t('Creator name'),
-        'handler' => 'views_handler_filter_user_name',
-      ),
-      'relationship' => array(
-        'title' => t('Creator'),
-        'help' => t("Relate this order to its creator's user account"),
-        'handler' => 'views_handler_relationship',
-        'base' => 'users',
-        'base field' => 'uid',
-        'field' => 'creator_uid',
-        'label' => t('Order creator'),
+    ),
+    'created_by_user_name' => array(
+      'real field' => 'creator_uid',
+      'title' => 'Order created by',
+      'help' => t("Name of the user that created the order"),
+      'field' => array(
+        'handler' => 'commerce_admin_order_handler_field_created_by_user_name',
       ),
     ),
   );

@@ -138,9 +138,7 @@ function commerce_admin_order_order_list_form($form, &$form_state, $params) {
       'sort' => 'DESC',
     ),
     array(
-      'data' => t('Created by'),
-      'field' => 'u.name',
-      'sort' => 'ASC',
+      'data' => t('Order created by'),
     ),
   );
 
@@ -154,6 +152,7 @@ function commerce_admin_order_order_list_form($form, &$form_state, $params) {
   $select->leftJoin('users', 'u', 'co.uid = u.uid');
   $select->fields('co', array('order_id', 'created'));
   $select->fields('u', array('uid', 'name'));
+  $select->fields('cao', array('creator_uid'));
   if (!$params['are_admin_orders']) {
     $select->isNull('cao.order_id');
   }
@@ -170,8 +169,15 @@ function commerce_admin_order_order_list_form($form, &$form_state, $params) {
     $options[$record->order_id] = array(
       l(check_plain($record->order_id), 'admin/commerce/orders/' . check_plain($record->order_id) . '/view'),
       date('Y-m-d H:i:sO', $record->created),
-      ($record->uid) ? l(check_plain($record->name), 'user/' . check_plain($record->uid)) : t('Anonymous'),
     );
+
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $record->order_id);
+
+    $creator = new stdClass();
+    $creator->name = commerce_admin_order_username_from_uid($order_wrapper->creator_uid->value());
+    $creator->id = $order_wrapper->creator_uid->value();
+
+    $options[$record->order_id][] = (!$creator->id) ? $creator->name : l(check_plain($creator->name), 'user/' . check_plain($creator->id));
   }
 
   $form['order_table'] = array(
@@ -371,7 +377,12 @@ function commerce_admin_order_creator_uid($order) {
   $query->fields('caoo', array('creator_uid'));
   $query->condition('caoo.order_id', $order->order_id, '=');
 
-  return $query->execute()->fetchField();
+  $uid = $query->execute()->fetchField();
+  if (!$uid) {
+    $uid = commerce_admin_order_order_first_revision_uid($order->order_id);
+  }
+
+  return $uid;
 }
 
 /**
@@ -387,6 +398,23 @@ function commerce_admin_order_order_first_revision_uid($order_id) {
   $query->groupBy('co.order_id');
 
   return $query->execute()->fetchField();
+}
+
+/**
+ * Return account username given a user id
+ */
+function commerce_admin_order_username_from_uid($uid) {
+  $name = 'Anonymous';
+
+  if ($uid) {
+    $name = db_select('users', 'u')
+      ->fields('u', array('name'))
+      ->condition('uid', $uid)
+      ->execute()
+      ->fetchField();
+  }
+
+  return $name;
 }
 
 /**
@@ -467,7 +495,7 @@ function commerce_admin_order_entity_view_alter(&$build, $type) {
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order_id);
 
     if ($order_wrapper->is_admin_order->value()) {
-      $creator = user_load($order_wrapper->creator_uid->value());
+      $creator = commerce_admin_order_username_from_uid($order_wrapper->creator_uid->value());
 
       $build['commerce_admin_order'] = array(
         '#type' => 'fieldset',
@@ -492,5 +520,6 @@ function commerce_admin_order_entity_view_alter(&$build, $type) {
 function commerce_admin_order_views_api() {
   return array(
     'api' => 3,
+    'path' => drupal_get_path('module', 'commerce_admin_order'),
   );
 }

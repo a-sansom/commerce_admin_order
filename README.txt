@@ -22,16 +22,8 @@ Also defined by the module are some Rules module events. Currently these are:
 The 'is admin order' boolean flag is made available to be displayed in Views in 
 the 'Commerce order' group as a field, 'Admin order?'. 
 
-The user id of the user that created the order is also available and a Views 
-relationship is defined to the users table so that the name of the user can be 
-added to various Views. For example, to add the order creator name to the order
-list view:
-
-  - Edit the orders view
-  - Relationships -> Add -> Commerce Order: Creator -> Apply
-  - Fields -> Add -> User: Name -> Apply
-  - Relationships dropdown select 'Order creator' -> Apply
-  - Save the view
+The user id and name of the user that created the order is also made available 
+to Views.
 
 For orders in the system before this module was installed/enabled, there's no 
 way of knowing if they were created via the admin form. This module adds forms 
