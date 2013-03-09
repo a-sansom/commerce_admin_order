@@ -508,7 +508,7 @@ function commerce_admin_order_entity_view_alter(&$build, $type) {
       $build['commerce_admin_order']['indicator'] = array(
         '#markup' => t('"@creator_name" created this order via the Commerce back 
           office system on @creation_time',
-          array('@creator_name' => $creator->name, '@creation_time' => date('Y-m-d H:i:sO', $build['#entity']->created))),
+          array('@creator_name' => $creator, '@creation_time' => date('Y-m-d H:i:sO', $build['#entity']->created))),
       );
     }
   }
