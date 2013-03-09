@@ -128,7 +128,8 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
     // Simulate the conversion to an admin order
     $query = db_insert('commerce_admin_order_order')
       ->fields(array(
-        'order_id' => $order->order_id
+        'order_id' => $order->order_id,
+        'creator_uid' => $this->store_admin_user->uid,
       ))
       ->execute();
 
