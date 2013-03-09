@@ -28,6 +28,22 @@ class CommerceAdminOrderTestCase extends CommerceBaseTestCase {
     $modules = parent::setUpHelper('all', array('commerce_admin_order'));
     parent::setUp($modules);
 
+    // Give the user permission(s) defined by this module so it can access
+    // restricted pages. This actually gives the permission(s) to registered 
+    // users. In a non-test scenario, permission(s) would be assigned to a role 
+    // and that role assigned to a user.
+    $this->site_admin_user = $this->createSiteAdmin();
+    $this->drupalLogin($this->site_admin_user);
+    
+    $this->drupalGet('admin/people/permissions');
+    $permissions = array('2[administer commerce admin orders]' => TRUE,);
+    $this->drupalPost('admin/people/permissions', $permissions, t('Save permissions'));
+    drupal_static_reset('user_access');
+    drupal_static_reset('user_role_permissions');
+    $this->assertText(t('The changes have been saved.'), t('Assigned module permissions.'));
+
+    $this->drupalLogout();
+
     $this->store_admin_user = $this->createStoreAdmin();
     $this->drupalLogin($this->store_admin_user);
 
