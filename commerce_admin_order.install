@@ -32,6 +32,18 @@ function commerce_admin_order_schema() {
         'not null' => TRUE,
         'description' => 'User ID of user that initially created the order',
       ),
+      'conversion' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Timestamp indicating date converted to admin order',
+      ),
+      'conversion_uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'User ID that converted the order to be an admin order',
+      ),
     ),
     'primary key' => array(
       'order_id'
