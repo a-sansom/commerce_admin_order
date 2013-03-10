@@ -13,12 +13,13 @@ class commerce_admin_order_handler_field_created_by_user_name extends views_hand
   function init(&$view, &$data) {
     parent::init($view, $data);
 
-    $this->additional_fields['uid'] = 'creator_uid';
+    unset($this->additional_fields['uid']);
+    $this->additional_fields['creator_uid'] = 'creator_uid';
   }
 
   function post_execute(&$values) {
     foreach ($values as $order) {
-      // If no uid found in CAOO table, use the uid of the order first revision
+      // If no uid found in CAOO table, get uid of order first revision
       if (!isset($order->commerce_admin_order_order_creator_uid)) {
         $order->commerce_admin_order_order_creator_uid = commerce_admin_order_order_first_revision_uid($order->order_id);
       }
