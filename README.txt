@@ -34,6 +34,17 @@ The forms are accessible via tabs on the Commerce orders page:
 
   /admin/commerce/orders
 
+The module also adds two new user operations to the 'People' administration
+form (/admin/people) that lets you update orders to and from admin orders in 
+bulk. This means that you can easily update all orders that were created by 
+certain user(s) at once. To use this functionality you need to have been 
+granted the permission 'Administer Commerce order admin order classification'.
+
+The new operations are listed in the "Update options" select control and are:
+
+  'Update user created orders to "admin orders"'
+  'Update user created "admin orders" to orders'
+
 If you are going to run the module tests, please see the following comment
 about the environment you try to run them in:
 

@@ -41,6 +41,31 @@ function commerce_admin_order_permission() {
 }
 
 /**
+ * Implements hook_user_operations()
+ */
+function commerce_admin_order_user_operations() {
+  $operations = array();
+
+  // Allow only certain users to convert orders by user
+  $permission = array('administer commerce admin orders');
+  if (commerce_admin_order_menu_access($permission)) {
+    $operations['update_to_commerce_admin_order_by_user'] = array(
+      'label' => t('Update user created orders to "admin orders"'),
+      'callback' => 'commerce_admin_order_update_orders_by_user',
+      'callback arguments' => array('to_admin_order'),
+    );
+
+    $operations['update_from_commerce_admin_order_by_user'] = array(
+      'label' => t('Update user created "admin orders" to orders'),
+      'callback' => 'commerce_admin_order_update_orders_by_user',
+      'callback arguments' => array('from_admin_order'),
+    );
+  }
+
+  return $operations;
+}
+
+/**
  * Custom menu item access control
  */
 function commerce_admin_order_menu_access() {
@@ -48,6 +73,19 @@ function commerce_admin_order_menu_access() {
     if (user_access($permission)) {
       return TRUE;
     }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Return if the current user has module admin permissions
+ */
+function commerce_admin_order_user_has_module_admin_permissions() {
+  $permission = array('administer commerce admin orders');
+
+  if (commerce_admin_order_menu_access($permission)) {
+    return TRUE;
   }
 
   return FALSE;
@@ -62,14 +100,25 @@ function commerce_admin_order_non_admin_orders_page() {
   $page = array();
 
   $page['summary'] = array(
-    '#type' => 'markup',
-    '#markup' => t('Orders that were created before the Commerce Admin order 
-      module was enabled (@module_enabled_date) that are not considered to have 
-      been created via the Commerce back office system.', 
-      array('@module_enabled' => date('Y-m-d H:i:sO', $module_enabled_date))),
-    '#prefix' => '<p>',
-    '#suffix' => '</p>',
+    'paragraph_1' => array(
+      '#type' => 'markup',
+      '#markup' => t('Orders that were created before the Commerce Admin order 
+        module was enabled (@module_enabled_date) that are not considered to have 
+        been created via the Commerce back office system.', 
+        array('@module_enabled' => date('Y-m-d H:i:sO', $module_enabled_date))),
+      '#prefix' => '<p>',
+      '#suffix' => '</p>',
+    ),
   );
+
+  if (commerce_admin_order_user_has_module_admin_permissions()) {
+    $page['summary']['paragraph_2'] = array(
+      '#type' => 'markup',
+      '#markup' => l(t('You have permissions to update orders in bulk, by user.'), 'admin/people'),
+      '#prefix' => '<p>',
+      '#suffix' => '</p>',
+    );
+  }
 
   $page['form'] = drupal_get_form('commerce_admin_order_order_list_form', 
     array('are_admin_orders' => FALSE));
@@ -97,6 +146,15 @@ function commerce_admin_order_admin_orders_page() {
       '#suffix' => '</p>',
     ),
   );
+
+  if (commerce_admin_order_user_has_module_admin_permissions()) {
+    $page['summary']['paragraph_2'] = array(
+      '#type' => 'markup',
+      '#markup' => l(t('You have permissions to update orders in bulk, by user.'), 'admin/people'),
+      '#prefix' => '<p>',
+      '#suffix' => '</p>',
+    );
+  }
 
   $page['form'] = drupal_get_form('commerce_admin_order_order_list_form', 
     array('are_admin_orders' => TRUE));
@@ -348,6 +406,169 @@ function commerce_admin_order_order_form_submit($form, &$form_state) {
       drupal_set_message($message, 'error');
     }
   }
+}
+
+/**
+ * Reclassify Commerce orders as 'admin order's in bulk
+ * 
+ * Using the user administration form (admin/people), classify all orders
+ * created by a user, that were created before the Commerce Admin order module
+ * was enabled, as either admin orders or not.
+ * 
+ * Because the 'created by' value for an order is a computed value, this is 
+ * quite database intensive because each order requires a lookup to ascertain
+ * who created the first revision. EntityFieldQuery queries aren't an option as 
+ * you can't use computed properties.
+ */
+function commerce_admin_order_update_orders_by_user($users, $operation) {
+  if ($operation == 'to_admin_order') {
+    $users['0'] = '0';
+
+    // Use Batch API.Could be dealing with a large amount of orders
+    $batch = array(
+      'title' => t('Converting orders to admin orders by user'),
+      'operations' => array(
+        array('commerce_admin_order_batch_operation_bulk_update', 
+          array(
+            'users' => $users,
+            'batch_total' => commerce_admin_order_batch_total_records($users),
+            'batch_size' => 50, /* @todo make configurable */
+          ),
+        ),
+      ),
+      'finished' => 'commerce_admin_order_batch_operation_bulk_update_complete',
+      'init_message' => t('Initialising...'),
+      'progress_message' => t('Running...'),
+      'error_message' => t('Commerce Admin order Batch API processing errored'),
+    );
+
+    batch_set($batch);
+  }
+  elseif ($operation == 'from_admin_order') {
+    // Only update orders for the user that have previously been updated to be
+    // admin orders
+    $deleted = db_delete('commerce_admin_order_order')
+      ->condition('creator_uid', $users, 'IN')
+      ->isNotNull('conversion')
+      ->execute();
+
+    drupal_set_message(t('@number order(s) updated from Commerce Admin orders', array('@number' => $deleted)), 'status');
+  }
+}
+
+/**
+ * Updating orders to admin orders in bulk, by user using Batch API
+ */
+function commerce_admin_order_batch_operation_bulk_update($users, $batch_total, $batch_size, &$context) {
+  if (empty($context['sandbox'])) {
+    $context['sandbox']['batch_no'] = 0;
+    $context['sandbox']['total_batches'] = ceil($batch_total / $batch_size);
+    $context['sandbox']['module_enabled_ts'] = variable_get('commerce_admin_order_first_enabled', 0);
+    $context['sandbox']['converted_orders'] = 0;
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['max'] = $batch_total;
+  }
+
+  // To use Batch API we need to get all orders that are not currently 'admin 
+  // orders' and aren't shopping carts, *and* have been converted to be admin
+  // orders to see if the selected users created them. 
+  //
+  // The emphasized portion of this is so that we can use $query->range() thus 
+  // adding OFFSET and LIMIT to the query and therefore making the query 
+  // compatible with batch processing.
+  $query = db_select('commerce_order', 'co');
+  $query->fields('co', array('order_id'));
+  $query->fields('caoo', array('conversion'));
+  $query->leftJoin('commerce_admin_order_order', 'caoo', 'co.order_id = caoo.order_id');
+  $query->condition('co.uid', $users, 'IN');
+  $query->condition('co.status', commerce_admin_order_order_statuses_to_ignore(), 'NOT IN');
+  $query->condition('co.created', $context['sandbox']['module_enabled_ts'], '<=');
+  $query->condition(
+    db_or()
+      ->isNull('caoo.order_id')
+      ->isNotNull('caoo.conversion')
+  );
+  $query->orderBy('co.order_id');
+  $query->range($context['sandbox']['progress'], $batch_size);
+
+  $result = $query->execute();
+
+  if ($result) {
+    global $user;
+    $updates = array();
+
+    foreach ($result AS $record) {
+      // Only potentially process not yet converted orders
+      if (empty($record->conversion)) {
+        $uid = commerce_admin_order_order_first_revision_uid($record->order_id);
+
+        if (in_array($uid, $users)) {
+          $updates[] = array($record->order_id, $uid, time(), $user->uid);
+          $context['sandbox']['converted_orders']++;
+        }
+      }
+    }
+
+    if ($updates) {
+      // @todo commerce_admin_order_order_list_form_submit() same as here
+      $query = db_insert('commerce_admin_order_order')->fields(array(
+        'order_id',
+        'creator_uid',
+        'conversion',
+        'conversion_uid',
+      ));
+
+      foreach ($updates as $update) {
+        $query->values($update);
+      }
+
+      $query->execute();
+    }
+  }
+
+  $context['sandbox']['batch_no']++;
+  $context['message'] = t('Processed @current of @total', 
+    array('@current' => $context['sandbox']['batch_no'], 
+        '@total' => $context['sandbox']['total_batches']));
+  // @todo info to show when finished
+  // @todo watchdog logging?
+  $context['results'][0] = t('@converted order(s) converted to admin orders', 
+    array('@converted' => $context['sandbox']['converted_orders']));
+  $context['sandbox']['progress'] = $context['sandbox']['progress'] + $batch_size;
+  $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+}
+
+/**
+ * Callback on completion of batch processing of bulk order updates
+ */
+function commerce_admin_order_batch_operation_bulk_update_complete($success, $results, $operations, $time) {
+  drupal_set_message($results[0], 'status');
+}
+
+/**
+ * Return the number of records that will be used by bulk processing
+ */
+function commerce_admin_order_batch_total_records($users) {
+  $module_enabled_ts = variable_get('commerce_admin_order_first_enabled', 0);
+
+  $query = db_select('commerce_order', 'co');
+  $query->fields('co', array('order_id'));
+  $query->leftJoin('commerce_admin_order_order', 'caoo', 'co.order_id = caoo.order_id');
+  $query->condition('co.uid', $users, 'IN');
+  $query->condition('co.status', array('cart', 'checkout_checkout', 'checkout_review', 'checkout_payment', 'checkout_complete'), 'NOT IN');
+  $query->condition('co.created', $module_enabled_ts, '<=');
+  $query->condition(db_or()->isNull('caoo.order_id')->isNotNull('caoo.conversion'));
+
+  return $query->countQuery()->execute()->fetchField();
+}
+
+/**
+ * Return array of order statuses that we want to ignore when listing orders
+ */
+function commerce_admin_order_order_statuses_to_ignore() {
+  $cart_statuses = commerce_order_statuses(array('cart' => TRUE));
+
+  return $cart_statuses + array('checkout_payment', 'checkout_complete');
 }
 
 /**
