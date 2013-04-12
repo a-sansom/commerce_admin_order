@@ -497,6 +497,9 @@ function commerce_admin_order_batch_operation_bulk_update($users, $batch_total, 
   if ($result) {
     global $user;
     $updates = array();
+    // No longer interested in anon user because we're going to see who created 
+    // the the first order revision 
+    unset($users['0']);
 
     foreach ($result AS $record) {
       // Only potentially process not yet converted orders
