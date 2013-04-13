@@ -531,9 +531,12 @@ function commerce_admin_order_batch_operation_bulk_update($users, $batch_total, 
   }
 
   $context['sandbox']['batch_no']++;
+  $current = $context['sandbox']['batch_no'] * $batch_size;
+  if ($current > $batch_total) {
+    $current = $batch_total;
+  }
   $context['message'] = t('Processed @current of @total', 
-    array('@current' => $context['sandbox']['batch_no'], 
-        '@total' => $context['sandbox']['total_batches']));
+    array('@current' => $current, '@total' => $batch_total));
   // @todo info to show when finished
   // @todo watchdog logging?
   $context['results'][0] = t('@converted order(s) converted to admin orders', 
