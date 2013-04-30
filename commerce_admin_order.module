@@ -765,6 +765,6 @@ function commerce_admin_order_entity_view_alter(&$build, $type) {
 function commerce_admin_order_views_api() {
   return array(
     'api' => 3,
-    'path' => drupal_get_path('module', 'commerce_admin_order'),
+    'path' => drupal_get_path('module', 'commerce_admin_order') . '/includes/views',
   );
 }
