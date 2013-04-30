@@ -49,7 +49,9 @@ function commerce_admin_order_schema() {
       'order_id'
      ),
     'indexes' => array(
-      'order_id' => array('order_id'),
+      'commerce_admin_order_order_id' => array('order_id'),
+      'commerce_admin_order_creator_uid' => array('creator_uid'),
+      'commerce_admin_order_conversion_uid' => array('conversion_uid'),
     ),
   );
 
